@@ -1,5 +1,7 @@
 import jimp from "jimp";
 import * as path from "path";
+import * as fs from "fs";
+import Table from "cli-table";
 
 const BOUNDARY_COLOR = 3978044671;
 const WURM_COLOR = 255;
@@ -79,12 +81,17 @@ function getWuermerTemperature(boundaries: number[], wuermer: {x: number; y: num
 }
 
 async function main() {
-    const allImages = ["Train01.bmp", "Train02.bmp", "Train03.bmp", "Train04.bmp", "Train05.bmp"]
-    //const allImages = ["Test01.bmp", "Test02.bmp", "Test03.bmp", "Test04.bmp", "Test05.bmp"]
+    const imageDir = path.join(__dirname, "images");
+    const allImages = fs.readdirSync(imageDir);
 
     const allImagesRead = await Promise.all(allImages.map(async (name): Promise<[name: string, image: ImagePixels]> => {
         return [name, await readImage(path.join(__dirname, "images", name))]
     }));
+
+    const head = ["Datei Name", "Min Temperatur", "Max Temperatur", "Durchschnittstemperatur", "Standard Abweichung", "Varianz"]
+    const table = new Table({
+        head
+    })
 
     allImagesRead.forEach(([name, image]) => {
         const boundaries = detectBoundaries(image);
@@ -97,14 +104,13 @@ async function main() {
         const standardAbweichung = berechneStandardAbweichung(temperatures);
         const varianzTemperatur = berechneVarianz(temperatures);
 
-        console.log(name);
-        console.log(`Minimale Temperatur: ${minTemperatur}`);
-        console.log(`Maximale Temperatur: ${maxTemperatur}`);
-        console.log(`Durchschnittliche Temperatur: ${durchschnittTemperatur}`);
-        console.log(`Standard Abweichung der Temperatur: ${standardAbweichung}`);
-        console.log(`Varianz der Temperatur: ${varianzTemperatur}`);
-        console.log();
+        table.push([name, minTemperatur, maxTemperatur, durchschnittTemperatur, standardAbweichung, varianzTemperatur]);
     });
+
+    console.log("CSV:");
+    console.log([head, ...table].map(row => row.join(",")).join("\n"));
+    console.log("\nTabelle:")
+    console.log(table.toString());
 }
 
 main();
